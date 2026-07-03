@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_business, get_current_user, get_db
+from app.dependencies import get_cache_service, get_current_business, get_current_user, get_db
 from app.models.user import User
 from app.schemas.product import (
     ProductCreate,
@@ -13,6 +13,7 @@ from app.schemas.product import (
     ProductUpdate,
     StockAdjustRequest,
 )
+from app.services.cache_service import CacheService
 from app.services.product_service import ProductService
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -28,8 +29,9 @@ async def list_products(
     db: AsyncSession = Depends(get_db),
     business_id: uuid.UUID = Depends(get_current_business),
     user: User = Depends(get_current_user),
+    cache: CacheService | None = Depends(get_cache_service),
 ):
-    service = ProductService(db, business_id, user.id)
+    service = ProductService(db, business_id, user.id, cache)
     return await service.list_products(
         limit=limit, offset=offset, search=search, category=category, low_stock=low_stock
     )
@@ -41,8 +43,9 @@ async def create_product(
     db: AsyncSession = Depends(get_db),
     business_id: uuid.UUID = Depends(get_current_business),
     user: User = Depends(get_current_user),
+    cache: CacheService | None = Depends(get_cache_service),
 ):
-    service = ProductService(db, business_id, user.id)
+    service = ProductService(db, business_id, user.id, cache)
     return await service.create_product(body.model_dump())
 
 
@@ -52,8 +55,9 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
     business_id: uuid.UUID = Depends(get_current_business),
     user: User = Depends(get_current_user),
+    cache: CacheService | None = Depends(get_cache_service),
 ):
-    service = ProductService(db, business_id, user.id)
+    service = ProductService(db, business_id, user.id, cache)
     return await service.get_product(product_id)
 
 
@@ -64,8 +68,9 @@ async def update_product(
     db: AsyncSession = Depends(get_db),
     business_id: uuid.UUID = Depends(get_current_business),
     user: User = Depends(get_current_user),
+    cache: CacheService | None = Depends(get_cache_service),
 ):
-    service = ProductService(db, business_id, user.id)
+    service = ProductService(db, business_id, user.id, cache)
     return await service.update_product(
         product_id, {k: v for k, v in body.model_dump().items() if v is not None}
     )
@@ -77,8 +82,9 @@ async def delete_product(
     db: AsyncSession = Depends(get_db),
     business_id: uuid.UUID = Depends(get_current_business),
     user: User = Depends(get_current_user),
+    cache: CacheService | None = Depends(get_cache_service),
 ):
-    service = ProductService(db, business_id, user.id)
+    service = ProductService(db, business_id, user.id, cache)
     await service.delete_product(product_id)
 
 
@@ -89,8 +95,9 @@ async def adjust_stock(
     db: AsyncSession = Depends(get_db),
     business_id: uuid.UUID = Depends(get_current_business),
     user: User = Depends(get_current_user),
+    cache: CacheService | None = Depends(get_cache_service),
 ):
-    service = ProductService(db, business_id, user.id)
+    service = ProductService(db, business_id, user.id, cache)
     return await service.adjust_stock(
         product_id, body.quantity_change, body.reason, body.note
     )

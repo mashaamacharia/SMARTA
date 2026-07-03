@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_business, get_current_user, get_db
+from app.dependencies import get_cache_service, get_current_business, get_current_user, get_db
 from app.models.user import User
 from app.schemas.order import (
     OrderCreate,
@@ -13,6 +13,7 @@ from app.schemas.order import (
     OrderOut,
     OrderStatusUpdate,
 )
+from app.services.cache_service import CacheService
 from app.services.order_service import OrderService
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -76,6 +77,7 @@ async def update_order_status(
     db: AsyncSession = Depends(get_db),
     business_id: uuid.UUID = Depends(get_current_business),
     user: User = Depends(get_current_user),
+    cache: CacheService | None = Depends(get_cache_service),
 ):
-    service = OrderService(db, business_id, user.id)
+    service = OrderService(db, business_id, user.id, cache)
     return await service.update_status(order_id, body.status)

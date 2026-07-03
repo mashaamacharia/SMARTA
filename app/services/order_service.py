@@ -7,12 +7,14 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache_keys import CacheKeys
 from app.models.customer import Customer
 from app.models.order import Order, OrderChannel, OrderStatus
 from app.models.order_item import OrderItem
 from app.models.product import Product
 from app.models.stock_movement import MovementType, StockMovement
 from app.models.user import User
+from app.services.cache_service import CacheService
 
 
 class InsufficientStockError(HTTPException):
@@ -29,10 +31,17 @@ class InsufficientStockError(HTTPException):
 
 
 class OrderService:
-    def __init__(self, db: AsyncSession, business_id: uuid.UUID, user_id: uuid.UUID):
+    def __init__(
+        self,
+        db: AsyncSession,
+        business_id: uuid.UUID,
+        user_id: uuid.UUID,
+        cache: CacheService | None = None,
+    ):
         self.db = db
         self.business_id = business_id
         self.user_id = user_id
+        self.cache = cache
 
     async def list_orders(
         self,
@@ -175,6 +184,16 @@ class OrderService:
 
         await self.db.flush()
         await self.db.commit()
+
+        if target_status == OrderStatus.confirmed and self.cache is not None:
+            period = datetime.now().strftime("%Y-%m")
+            await self.cache.invalidate_pattern(
+                CacheKeys.product_pattern(str(self.business_id))
+            )
+            await self.cache.delete(
+                CacheKeys.sales_report(str(self.business_id), period)
+            )
+
         return order
 
     async def confirm_order(self, order: Order) -> Order:

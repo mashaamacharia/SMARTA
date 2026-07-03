@@ -9,6 +9,7 @@ pydantic[email]
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
+redis[hiredis]
 httpx
 pytest
 pytest-asyncio

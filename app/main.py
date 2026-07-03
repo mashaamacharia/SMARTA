@@ -1,15 +1,27 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api.v1.router import router as v1_router
 # BENCHMARK ONLY — not shipped to production
 from app.api.v1.benchmark_sync.products_sync import router as benchmark_router
+from app.core.cache import close_redis, init_redis
 from app.core.config import settings
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_redis()
+    yield
+    await close_redis()
+
 
 app = FastAPI(
     title=settings.APP_NAME,
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 app.include_router(v1_router)

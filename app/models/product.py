@@ -41,3 +41,19 @@ class Product(TimestampMixin, Base):
     )
 
     business = relationship("Business", back_populates="products")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "business_id": str(self.business_id),
+            "name": self.name,
+            "sku": self.sku,
+            "category": self.category,
+            "unit_price": str(self.unit_price),
+            "cost_price": str(self.cost_price),
+            "quantity": self.quantity,
+            "low_stock_threshold": self.low_stock_threshold,
+            "units": self.units,
+            "tax_category": self.tax_category.value if self.tax_category else None,
+            "is_active": self.is_active,
+        }
