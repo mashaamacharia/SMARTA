@@ -1,4 +1,4 @@
-# SMARTA — Backend API
+# SMARTA Backend API
 
 **SMARTA** is a production-ready async FastAPI backend for retail/pharmacy/clinic/hotel businesses. It provides auth (JWT), inventory management, order processing with concurrency-safe stock deduction, Redis caching, and a benchmark harness to validate the async architecture decision.
 
@@ -8,12 +8,12 @@
 
 The entire production API is built on **asynchronous I/O** (FastAPI + SQLAlchemy 2.0 async + asyncpg). This is the correct choice for SMARTA's workload profile:
 
-| Workload | I/O-bound? | Benefits from async? |
-|---|---|---|
-| DB queries (PostgreSQL) | Yes | Async pools overlap waits |
-| WhatsApp/SMS notifications | Yes | Non-blocking HTTP calls |
-| LLM calls (future) | Yes | High-latency, no CPU work |
-| Request handling | Mixed | Async FastAPI handles more concurrent connections with fewer OS threads |
+| Workload                   | I/O-bound? | Benefits from async?                                                    |
+| -------------------------- | ---------- | ----------------------------------------------------------------------- |
+| DB queries (PostgreSQL)    | Yes        | Async pools overlap waits                                               |
+| WhatsApp/SMS notifications | Yes        | Non-blocking HTTP calls                                                 |
+| LLM calls (future)         | Yes        | High-latency, no CPU work                                               |
+| Request handling           | Mixed      | Async FastAPI handles more concurrent connections with fewer OS threads |
 
 A minimal **sync benchmark harness** (2 endpoints: `GET /api/v1/benchmark-sync/products`, `PATCH /api/v1/benchmark-sync/orders/{id}/status`) exists solely to validate this decision with real performance data — it is **not part of the shipped product**.
 
@@ -61,6 +61,7 @@ docker-compose up --build
 ```
 
 This starts:
+
 - **API** on `http://localhost:8000`
 - **PostgreSQL 15** on `:5432`
 - **Redis 7** on `:6379`
@@ -74,52 +75,52 @@ Migrations run automatically on container start.
 
 ### Auth (async)
 
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/v1/auth/register` | Register business + owner |
-| POST | `/api/v1/auth/login` | Login → access + refresh tokens |
-| POST | `/api/v1/auth/refresh` | Rotate refresh token |
-| POST | `/api/v1/auth/logout` | Revoke access token (Redis blacklist) |
-| GET | `/api/v1/auth/me` | Current user profile (cached 15 min) |
+| Method | Path                      | Description                           |
+| ------ | ------------------------- | ------------------------------------- |
+| POST   | `/api/v1/auth/register` | Register business + owner             |
+| POST   | `/api/v1/auth/login`    | Login → access + refresh tokens      |
+| POST   | `/api/v1/auth/refresh`  | Rotate refresh token                  |
+| POST   | `/api/v1/auth/logout`   | Revoke access token (Redis blacklist) |
+| GET    | `/api/v1/auth/me`       | Current user profile (cached 15 min)  |
 
 ### Products (async)
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/v1/products` | Paginated list (search, category, low_stock filters) |
-| POST | `/api/v1/products` | Create product |
-| GET | `/api/v1/products/{id}` | Get single product |
-| PUT | `/api/v1/products/{id}` | Update product |
-| DELETE | `/api/v1/products/{id}` | Soft delete |
-| POST | `/api/v1/products/{id}/adjust` | Adjust stock with movement log |
+| Method | Path                             | Description                                          |
+| ------ | -------------------------------- | ---------------------------------------------------- |
+| GET    | `/api/v1/products`             | Paginated list (search, category, low_stock filters) |
+| POST   | `/api/v1/products`             | Create product                                       |
+| GET    | `/api/v1/products/{id}`        | Get single product                                   |
+| PUT    | `/api/v1/products/{id}`        | Update product                                       |
+| DELETE | `/api/v1/products/{id}`        | Soft delete                                          |
+| POST   | `/api/v1/products/{id}/adjust` | Adjust stock with movement log                       |
 
 ### Orders (async)
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/v1/orders` | Paginated list (status, date, customer filters) |
-| POST | `/api/v1/orders` | Create order (pending) |
-| GET | `/api/v1/orders/{id}` | Get order with items |
-| PATCH | `/api/v1/orders/{id}/status` | Update status (pending → confirmed → fulfilled) |
+| Method | Path                           | Description                                       |
+| ------ | ------------------------------ | ------------------------------------------------- |
+| GET    | `/api/v1/orders`             | Paginated list (status, date, customer filters)   |
+| POST   | `/api/v1/orders`             | Create order (pending)                            |
+| GET    | `/api/v1/orders/{id}`        | Get order with items                              |
+| PATCH  | `/api/v1/orders/{id}/status` | Update status (pending → confirmed → fulfilled) |
 
 ### Reports (async, cached)
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/v1/reports/sales` | Monthly sales summary (cached 30 min) |
+| Method | Path                      | Description                           |
+| ------ | ------------------------- | ------------------------------------- |
+| GET    | `/api/v1/reports/sales` | Monthly sales summary (cached 30 min) |
 
 ### Admin (async)
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/v1/admin/cache/stats` | Redis cache hit rate, memory, keys |
+| Method | Path                          | Description                        |
+| ------ | ----------------------------- | ---------------------------------- |
+| GET    | `/api/v1/admin/cache/stats` | Redis cache hit rate, memory, keys |
 
 ### Benchmark (sync — NOT SHIPPED)
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/v1/benchmark-sync/products` | List products (sync) |
-| PATCH | `/api/v1/benchmark-sync/orders/{id}/status` | Update order status (sync) |
+| Method | Path                                          | Description                |
+| ------ | --------------------------------------------- | -------------------------- |
+| GET    | `/api/v1/benchmark-sync/products`           | List products (sync)       |
+| PATCH  | `/api/v1/benchmark-sync/orders/{id}/status` | Update order status (sync) |
 
 ---
 
@@ -139,6 +140,7 @@ for item in order.items:
 ```
 
 This ensures that when two confirm requests arrive simultaneously for the same product:
+
 1. The first request acquires the row lock
 2. The second request **waits** for the first to complete
 3. If the first consumes the last unit, the second sees `quantity < requested` and returns **409 Conflict**
@@ -148,10 +150,10 @@ The same locking strategy is mirrored in the sync benchmark harness.
 ### Expected Results
 
 | Concurrency Level | Async (req/s) | Sync (req/s) | Oversell Count |
-|---|---|---|---|
-| 100 users | (measure) | (measure) | 0 |
-| 500 users | (measure) | (measure) | 0 |
-| 1,000 users | (measure) | (measure) | 0 |
+| ----------------- | ------------- | ------------ | -------------- |
+| 100 users         | (measure)     | (measure)    | 0              |
+| 500 users         | (measure)     | (measure)    | 0              |
+| 1,000 users       | (measure)     | (measure)    | 0              |
 
 (Insert your Locust results here after running the benchmarks.)
 
@@ -210,14 +212,14 @@ Project 2 adds **Redis** as an intelligent caching layer to reduce database load
 
 ### Cache Strategy
 
-| Endpoint | TTL | Invalidation |
-|---|---|---|
-| `GET /products` (all filter variants) | 5 min | On any product create/update/delete/adjust |
-| `GET /products/{id}` | 10 min | On that product's update/delete/adjust |
-| `GET /reports/sales` | 30 min | On new confirmed order |
-| `GET /auth/me` | 15 min | On logout |
-| `POST /orders/{id}/status` → confirmed | No cache | Invalidates product + report caches |
-| `POST /products/{id}/adjust` | No cache | Invalidates product caches immediately |
+| Endpoint                                  | TTL      | Invalidation                               |
+| ----------------------------------------- | -------- | ------------------------------------------ |
+| `GET /products` (all filter variants)   | 5 min    | On any product create/update/delete/adjust |
+| `GET /products/{id}`                    | 10 min   | On that product's update/delete/adjust     |
+| `GET /reports/sales`                    | 30 min   | On new confirmed order                     |
+| `GET /auth/me`                          | 15 min   | On logout                                  |
+| `POST /orders/{id}/status` → confirmed | No cache | Invalidates product + report caches        |
+| `POST /products/{id}/adjust`            | No cache | Invalidates product caches immediately     |
 
 ### Never Cached
 
@@ -254,6 +256,7 @@ smarta:user:{user_id}:profile
 ### Cache Monitoring
 
 `GET /api/v1/admin/cache/stats` returns real-time metrics:
+
 ```json
 {
   "redis_memory_used": "12.4MB",
@@ -285,10 +288,10 @@ On logout, the token's `jti` (JWT ID) is stored in Redis with a TTL matching the
 After enabling caching, re-run the Locust benchmarks to measure improvement:
 
 | Concurrent Users | Without Cache (P1) | With Cache (P2) | Improvement |
-|---|---|---|---|
-| 100 | (measure) | (measure) | (measure) |
-| 500 | (measure) | (measure) | (measure) |
-| 1,000 | (measure) | (measure) | (measure) |
+| ---------------- | ------------------ | --------------- | ----------- |
+| 100              | (measure)          | (measure)       | (measure)   |
+| 500              | (measure)          | (measure)       | (measure)   |
+| 1,000            | (measure)          | (measure)       | (measure)   |
 
 ---
 
@@ -339,6 +342,7 @@ pytest tests/ -v --asyncio-mode=auto
 Every product/order/customer query is scoped to the authenticated user's `business_id` via the `get_current_business` dependency. A `business_id` passed in a request body is **never trusted** — the system always reads it from the JWT.
 
 Composite unique constraints enforce data integrity:
+
 - `UNIQUE(business_id, email)` on users — same email OK across businesses, not within one
 - `UNIQUE(business_id, sku)` on products — SKU uniqueness per tenant
 
